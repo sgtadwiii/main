@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jelajah Kuliner Ponorogo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1f2937; /* Warna utama baru (dark gray/charcoal) */
+            --secondary-gold: #FACC15; /* Kuning ke Emas */
+            --dark-background: #1A202C; /* Background mode gelap */
+            --light-text: #E2E8F0; /* Teks terang untuk background gelap */
+            --card-background: #FFFFFF; /* Background card mode terang */
+            --dark-card-background: #2D3748; /* Background card mode gelap */
+            --text-dark: #1A202C; /* Teks gelap default */
+            --text-light: #E2E8F0; /* Teks terang default */
+            --tab-active-bg: #E0E7FF; /* Background tab aktif terang */
+            --dark-tab-active-bg: #4A5568; /* Background tab aktif gelap */
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif; /* Full Poppins */
+            margin: 0;
+            overflow: hidden;
+            background-color: #f7fafc;
+            color: var(--text-dark);
+            font-size: 0.95rem; /* Sedikit perkecil ukuran font dasar untuk responsivitas */
+        }
+
+        body.dark-mode {
+            background-color: var(--dark-background);
+            color: var(--text-light);
+        }
+
+        #map {
+            position: absolute;
+            top: 4rem; /* Topbar diperkecil */
+            left: 0;
+            width: 100%; /* Default 100% width */
+            bottom: 0;
+            z-index: 0;
+            transition: left 0.3s ease-in-out, width 0.3s ease-in-out; /* Tambah transisi untuk width */
+        }
+
+        /* Styling for Leaflet Popups */
+        .leaflet-popup-content-wrapper {
+            font-size: 0.85rem; /* Perkecil sedikit font popup */
+            border-radius: 0; /* Hilangkan lengkungan */
+            box-shadow: none; /* Hilangkan bayangan */
+            font-family: 'Poppins', sans-serif;
+            background: var(--card-background); /* Mengikuti tema */
+            color: var(--text-dark); /* Mengikuti tema */
+            padding: 0; /* Remove default padding to control inner content */
+        }
+        body.dark-mode .leaflet-popup-content-wrapper {
+            background: var(--dark-card-background);
+            color: var(--text-light);
+        }
+        body.dark-mode .leaflet-popup-tip {
+            background: var(--dark-card-background);
+        }
+        /* Custom styling for popup content */
+        .kuliner-popup-content {
+            padding: 0.8rem; /* Perkecil padding */
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem; /* Perkecil jarak */
+        }
+        .kuliner-popup-content .popup-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.4rem;
+        }
+        .kuliner-popup-content .popup-title {
+            font-weight: 700;
+            font-size: 1rem; /* Perkecil font judul */
+            color: var(--text-dark); /* Ganti warna agar sesuai tema */
+            flex-grow: 1;
+        }
+        body.dark-mode .kuliner-popup-content .popup-title {
+            color: var(--text-light);
+        }
+        .kuliner-popup-content .popup-rating {
+            display: flex;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--secondary-gold);
+        }
+        .kuliner-popup-content .popup-address {
+            display: flex;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #4A5568;
+        }
+        body.dark-mode .kuliner-popup-content .popup-address {
+            color: #CBD5E0;
+        }
+        .kuliner-popup-content .popup-actions {
+            padding-top: 0.8rem;
+            border-top: 1px solid #E2E8F0;
+            margin-top: 0.4rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+        body.dark-mode .kuliner-popup-content .popup-actions {
+            border-top: 1px solid #4A5568;
+        }
+        .kuliner-popup-content .popup-select-mode {
+            width: 100%;
+            border: 1px solid #CBD5E0;
+            border-radius: 0; /* Hilangkan lengkungan */
+            padding: 0.4rem 0.6rem; /* Perkecil padding */
+            font-size: 0.8rem;
+            background-color: white;
+            color: var(--text-dark);
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%231f2937" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 0.6rem center;
+            background-size: 1em;
+            padding-right: 2rem;
+        }
+        body.dark-mode .kuliner-popup-content .popup-select-mode {
+            background-color: #4A5568;
+            border-color: #4A5568;
+            color: var(--text-light);
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%23FACC15" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>');
+        }
+        .kuliner-popup-content .popup-btn {
+            background-color: var(--primary-color); /* Ganti warna */
+            color: white;
+            padding: 0.5rem 0.8rem; /* Perkecil padding */
+            border-radius: 0; /* Hilangkan lengkungan */
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .kuliner-popup-content .popup-btn:hover {
+            background-color: #374151; /* Warna hover baru */
+        }
+        .kuliner-popup-content .popup-share-btn {
+            background-color: #6B7280;
+            color: white;
+            padding: 0.5rem 0.8rem; /* Perkecil padding */
+            border-radius: 0; /* Hilangkan lengkungan */
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+        .kuliner-popup-content .popup-share-btn:hover {
+            background-color: #4B5563;
+        }
+
+        .sidebar {
+            position: absolute;
+            top: 4rem; /* Topbar diperkecil */
+            left: 0;
+            bottom: 0;
+            width: 320px;
+            z-index: 999;
+            background: var(--card-background);
+            padding: 1rem; /* Perkecil padding */
+            box-shadow: none; /* Hilangkan bayangan */
+            display: flex;
+            flex-direction: column;
+            /* Transformasi CSS untuk animasi */
+            transition: transform 0.3s ease-in-out; 
+            border-radius: 0; /* Hilangkan lengkungan */
+            color: var(--text-dark);
+            will-change: transform; /* Tambahan untuk performa */
+        }
+
+        .sidebar.collapsed {
+            transform: translateX(-100%);
+        }
+
+        body.dark-mode .sidebar {
+            background: var(--dark-card-background);
+            color: var(--text-light);
+            border-right: 1px solid #4A5568;
+        }
+        body.dark-mode .sidebar .text-gray-800,
+        body.dark-mode .sidebar .section-title {
+            color: var(--text-light);
+        }
+        body.dark-mode .sidebar .text-gray-600 {
+            color: #A0AEC0;
+        }
+        body.dark-mode .sidebar .text-gray-500 {
+            color: #A0AEC0;
+        }
+
+        .topbar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4rem; /* Topbar diperkecil */
+            background: var(--primary-color); /* Warna baru */
+            color: var(--light-text);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem; /* Perkecil padding */
+            font-size: 1.3rem; /* Perkecil font judul */
+            font-weight: 700;
+            z-index: 1000;
+            box-shadow: none; /* Hilangkan bayangan */
+            font-family: 'Poppins', sans-serif; /* Full Poppins */
+        }
+
+        .alert-box {
+            position: absolute;
+            top: 4.5rem; /* Sesuaikan dengan tinggi topbar baru */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--primary-color); /* Warna baru */
+            color: var(--light-text);
+            border-radius: 0.5rem; /* Sedikit lengkungan untuk alert */
+            padding: 0.7rem 1.5rem;
+            box-shadow: none; /* Hilangkan bayangan */
+            z-index: 1000;
+            font-size: 0.9rem;
+            font-weight: 500;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .alert-box.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .sidebar-footer {
+            position: sticky;
+            bottom: 0;
+            background: var(--card-background);
+            padding-top: 0.8rem; /* Perkecil padding */
+            margin-top: auto;
+            border-top: 1px solid #E2E8F0;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #6B7280;
+            flex-shrink: 0;
+        }
+
+        body.dark-mode .sidebar-footer {
+            background: var(--dark-card-background);
+            border-top: 1px solid #4A5568;
+            color: #A0AEC0;
+        }
+
+        /* Direction Panel - Bottom Sheet Style */
+        #directionPanel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            max-height: 70vh; /* Tinggi tetap di mobile */
+            overflow-y: auto;
+            background: var(--card-background);
+            border-radius: 0; /* Hilangkan lengkungan */
+            padding: 0.5rem; /* Padding lebih kecil */
+            box-shadow: none; /* Hilangkan bayangan */
+            z-index: 999;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            transform: translateY(100%); /* Sembunyi di bawah layar */
+            transition: transform 0.3s ease-out;
+            color: var(--text-dark);
+            padding-top: 0.2rem; /* Untuk handle minimize */
+            will-change: transform; /* Tambahan untuk performa */
+        }
+        #directionPanel.show-directions {
+            transform: translateY(0);
+        }
+
+        /* Desktop adjustments for direction panel */
+        @media (min-width: 768px) {
+            #directionPanel {
+                max-height: 50vh; /* Tinggi tetap di desktop */
+                border-radius: 0; /* Hilangkan lengkungan */
+            }
+            /* Dynamic adjustment by JS when sidebar state changes */
+            #directionPanel.sidebar-open { /* Class added/removed by JS */
+                left: 320px;
+                width: calc(100% - 320px);
+            }
+            #directionPanel:not(.sidebar-open) { /* When sidebar is collapsed */
+                left: 0;
+                width: 100%;
+            }
+        }
+
+        body.dark-mode #directionPanel {
+            background: var(--dark-card-background);
+            color: var(--text-light);
+        }
+        body.dark-mode #directionPanel .text-gray-800 {
+            color: var(--text-light);
+        }
+        body.dark-mode #directionPanel .text-gray-700 {
+            color: #CBD5E0;
+        }
+
+        #directionPanel ul {
+            flex-grow: 1;
+            margin-top: 0.5rem;
+            /* padding-bottom: 1rem; -- Dihapus karena tombol Akhiri Rute di bawah */
+            overflow-y: auto; /* Pastikan list rute bisa di-scroll */
+        }
+        #directionPanel ul li {
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+            color: #4A5568;
+        }
+        body.dark-mode #directionPanel ul li {
+            color: #CBD5E0;
+        }
+
+        #directionPanel ul li::before {
+            content: "•";
+            margin-right: 0.6rem;
+            color: var(--primary-color); /* Warna baru */
+            font-weight: 600;
+        }
+
+        /* Panel Header Controls (Minimize & Tutup) */
+        .panel-header-controls {
+            display: flex;
+            justify-content: flex-end; /* Minimize di kanan */
+            align-items: center;
+            padding: 0.2rem 0.5rem 0.5rem 0.5rem;
+            width: 100%;
+        }
+        .customize-panel-btn { /* Kelas dasar untuk tombol customize */
+            background-color: transparent;
+            border: none;
+            color: #6B7280;
+            font-size: 0.85rem;
+            padding: 0.3rem 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.2rem;
+        }
+        .customize-panel-btn:hover {
+            background-color: #E2E8F0;
+            color: var(--primary-color);
+        }
+        body.dark-mode .customize-panel-btn {
+            color: #A0AEC0;
+        }
+        body.dark-mode .customize-panel-btn:hover {
+            background-color: #4A5568;
+            color: var(--text-light);
+        }
+
+        #directionPanel .close-btn { /* Tombol Tutup di header dihapus */
+            display: none;
+        }
+
+        .minimize-explicit-btn { /* Tombol Minimize */
+            order: 0; /* Di kiri (tetap di kanan karena flex-end) */
+            margin-left: auto; /* Dorong ke kanan */
+            color: #6B7280;
+            font-size: 1.2rem; /* Ikon lebih besar */
+            padding: 0.5rem; /* Padding lebih besar agar mudah disentuh */
+        }
+        .minimize-explicit-btn:hover {
+            background-color: #E2E8F0;
+            color: #1F2937;
+        }
+        body.dark-mode .minimize-explicit-btn {
+            color: #A0AEC0;
+        }
+        body.dark-mode .minimize-explicit-btn:hover {
+            background-color: #4A5568;
+            color: var(--text-light);
+        }
+
+        /* Tombol Akhiri Rute di paling bawah panel */
+        #endRouteBtn {
+            background-color: #EF4444; /* Merah untuk akhiri rute */
+            color: white;
+            padding: 0.8rem 1rem; /* Padding lebih besar */
+            font-weight: 700; /* Lebih tebal */
+            font-size: 1rem; /* Font lebih besar */
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: auto; /* Dorong ke paling bawah */
+            width: 100%; /* Lebar penuh */
+            flex-shrink: 0; /* Pastikan tidak menyusut */
+        }
+        #endRouteBtn:hover {
+            background-color: #DC2626;
+        }
+
+
+        .minimize-handle {
+            width: 40px;
+            height: 4px;
+            background-color: #CBD5E0;
+            border-radius: 2px;
+            margin: 0 auto 0.5rem auto; /* Perkecil margin bawah */
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        body.dark-mode .minimize-handle {
+            background-color: #6B7280;
+        }
+        .minimize-handle:hover {
+            background-color: #A0AEC0;
+        }
+
+        /* Tombol dan Input Styling */
+        /* Default button styles */
+        .btn-primary, .btn-secondary, .btn-danger, .btn-info {
+            padding: 0.6rem 1rem;
+            border-radius: 0; /* Hilangkan lengkungan */
+            font-weight: 600;
+            transition: background-color 0.2s ease; /* Hanya background, tanpa transform */
+            display: flex; /* Untuk ikon dan teks sejajar */
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem; /* Jarak antara ikon dan teks */
+            font-size: 0.9rem; /* Ukuran font umum untuk tombol */
+        }
+        .btn-primary:hover, .btn-secondary:hover, .btn-danger:hover, .btn-info:hover {
+            transform: translateY(0); /* Hilangkan efek translateY */
+        }
+
+        /* Active state */
+        .btn-primary { /* Digunakan untuk tombol aktif */
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #374151; /* Warna hover baru */
+        }
+        /* Inactive state */
+        .btn-secondary { /* Digunakan untuk tombol nonaktif */
+            background-color: #D1D5DB; /* Warna abu-abu yang lebih terang untuk nonaktif */
+            color: #4B5563; /* Teks abu-abu gelap */
+        }
+        .btn-secondary:hover {
+            background-color: #A0AEC0; /* Warna hover untuk nonaktif */
+            color: #1F2937;
+        }
+
+        /* Specific button overrides for consistent appearance */
+        .btn-danger {
+            background-color: #EF4444;
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: #DC2626;
+        }
+
+        .btn-info {
+            background-color: #3B82F6;
+            color: white;
+        }
+        .btn-info:hover {
+            background-color: #2563EB;
+        }
+
+        /* Dark mode button adjustments */
+        body.dark-mode .btn-primary {
+            background-color: var(--secondary-gold); /* Gold untuk primary di dark mode */
+            color: var(--text-dark); /* Teks gelap di gold */
+        }
+        body.dark-mode .btn-primary:hover {
+            background-color: #EAB308;
+        }
+        body.dark-mode .btn-secondary {
+            background-color: #4A5568; /* Dark gray for secondary in dark mode */
+            color: #A0AEC0; /* Light gray text */
+        }
+        body.dark-mode .btn-secondary:hover {
+            background-color: #6B7280;
+        }
+        body.dark-mode .btn-danger {
+            background-color: #EF4444; /* Tetap merah */
+        }
+        body.dark-mode .btn-info {
+            background-color: #3B82F6; /* Tetap biru */
+        }
+
+
+        /* Input Styling */
+        input[type="text"], input[type="range"], select {
+            border: 1px solid #CBD5E0;
+            border-radius: 0; /* Hilangkan lengkungan */
+            padding: 0.6rem 0.8rem; /* Perkecil padding */
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            background-color: white;
+            color: var(--text-dark);
+        }
+        input[type="text"]:focus, input[type="range"]:focus, select:focus {
+            border-color: var(--primary-color); /* Warna baru */
+            box-shadow: none; /* Hilangkan bayangan */
+            outline: none;
+        }
+
+        body.dark-mode input[type="text"], body.dark-mode input[type="range"], body.dark-mode select {
+            background-color: #4A5568;
+            border-color: #4A5568;
+            color: var(--text-light);
+        }
+        body.dark-mode input[type="text"]::placeholder {
+            color: #A0AEC0;
+        }
+        body.dark-mode input[type="text"]:focus, body.dark-mode input[type="range"]:focus, body.dark-mode select:focus {
+            border-color: var(--secondary-gold);
+        }
+
+        /* Custom range slider thumb and track */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            border: 1px solid var(--primary-color); /* Warna baru */
+            height: 18px; /* Perkecil ukuran thumb */
+            width: 18px;
+            border-radius: 50%;
+            background: var(--primary-color); /* Warna baru */
+            cursor: pointer;
+            box-shadow: none; /* Hilangkan bayangan */
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px; /* Perkecil tinggi track */
+            cursor: pointer;
+            background: #ddd;
+            border-radius: 3px; /* Perkecil lengkungan */
+            border: none; /* Hilangkan border */
+        }
+        body.dark-mode input[type=range]::-webkit-slider-thumb {
+            border: 1px solid var(--secondary-gold);
+            background: var(--secondary-gold);
+        }
+        body.dark-mode input[type=range]::-webkit-slider-runnable-track {
+            background: #6B7280;
+        }
+
+        /* Sidebar List Styling */
+        #sidebarList > div {
+            border-radius: 0; /* Hilangkan lengkungan */
+            padding: 0.8rem; /* Perkecil padding */
+            margin-bottom: 0.6rem; /* Perkecil margin */
+            background-color: #F7FAFC;
+            transition: background-color 0.2s ease;
+            box-shadow: none; /* Hilangkan bayangan */
+            color: var(--text-dark);
+        }
+        #sidebarList > div:hover {
+            background-color: #EDF2F7;
+            transform: translateY(0); /* Hilangkan efek translateY */
+        }
+        body.dark-mode #sidebarList > div {
+            background-color: #2D3748;
+            border: 1px solid #4A5568;
+        }
+        body.dark-mode #sidebarList > div:hover {
+            background-color: #4A5568;
+        }
+        body.dark-mode #sidebarList .text-gray-800 {
+            color: var(--text-light);
+        }
+        body.dark-mode #sidebarList .text-gray-600 {
+            color: #CBD5E0;
+        }
+
+        /* Custom Select for Travel Mode (sidebar) */
+        .custom-select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%231f2937" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 0.7rem center;
+            background-size: 1em;
+            padding-right: 2.5rem;
+        }
+        body.dark-mode .custom-select {
+             background-image: url('data:image/svg+xml;utf8,<svg fill="%23FACC15" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>');
+        }
+
+        /* Custom control for "My Location" button */
+        .leaflet-control-locate {
+            box-shadow: none; /* Hilangkan bayangan */
+            border-radius: 0; /* Hilangkan lengkungan */
+            background-color: white;
+            color: #333;
+            text-align: center;
+            text-decoration: none;
+            font-size: 1.1em; /* Perkecil font */
+            width: 28px; /* Perkecil ukuran */
+            height: 28px;
+            line-height: 28px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .leaflet-control-locate:hover {
+            background-color: #f4f4f4;
+        }
+        body.dark-mode .leaflet-control-locate {
+            background-color: var(--dark-card-background);
+            color: var(--text-light);
+        }
+
+        /* Tab Navigation Styles */
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 0.8rem; /* Perkecil margin */
+            border-bottom: 1px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+        body.dark-mode .tab-buttons {
+            border-bottom: 1px solid #4A5568;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 0.6rem 0.4rem; /* Perkecil padding */
+            text-align: center;
+            font-weight: 600;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+            color: #6B7280;
+            font-size: 0.85rem; /* Perkecil font */
+        }
+        .tab-button:hover {
+            background-color: #f7fafc;
+        }
+        .tab-button.active {
+            border-color: var(--primary-color); /* Warna baru */
+            color: var(--primary-color); /* Warna baru */
+            background-color: var(--tab-active-bg);
+        }
+
+        body.dark-mode .tab-button {
+            color: #A0AEC0;
+        }
+        body.dark-mode .tab-button:hover {
+            background-color: #2D3748;
+        }
+        body.dark-mode .tab-button.active {
+            border-color: var(--secondary-gold);
+            color: var(--secondary-gold);
+            background-color: var(--dark-tab-active-bg);
+        }
+
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* Direction Panel Sub-Content (Tabs inside Direction Panel) */
+        .direction-sub-panel {
+            display: none;
+            flex-direction: column;
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+            padding: 0.8rem; /* Perkecil padding */
+        }
+        .direction-sub-panel.active {
+            display: flex;
+        }
+        /* Style for tab buttons within direction panel */
+        #directionPanel .tab-button {
+            border-radius: 0; /* Hilangkan lengkungan */
+            margin: 0; /* Hilangkan margin */
+        }
+        #directionPanel .tab-buttons {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        #directionPanel .tab-button.active {
+            box-shadow: none; /* Hilangkan bayangan */
+        }
+        body.dark-mode #directionPanel .tab-button.active {
+            box-shadow: none;
+        }
+
+        /* Tombol Maximize di Peta */
+        #maximizeDirectionBtn {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 1.5rem; /* Pindahkan ke kiri */
+            background-color: var(--primary-color); /* Warna baru */
+            color: white;
+            padding: 0.6rem 0.9rem; /* Perkecil padding */
+            border-radius: 0.5rem; /* Sedikit lengkungan untuk tombol maximize */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex; /* Default flex agar span icon dan text sejajar */
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            transition: background-color 0.2s ease, transform 0.2s ease;
+            z-index: 998;
+        }
+        #maximizeDirectionBtn:hover {
+            background-color: #374151; /* Warna hover baru */
+            transform: translateY(0);
+        }
+        body.dark-mode #maximizeDirectionBtn {
+            background-color: var(--secondary-gold);
+            color: var(--text-dark);
+        }
+        body.dark-mode #maximizeDirectionBtn:hover {
+            background-color: #EAB308;
+        }
+
+        /* Responsivitas keseluruhan */
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; height: calc(100% - 4rem); top: 4rem; border-radius: 0; }
+            .topbar { font-size: 1.1rem; height: 3.5rem; padding: 0 0.8rem;} /* Topbar mobile lebih kecil */
+            #map { top: 3.5rem; }
+            /* Penyesuaian untuk bottom sheet di mobile */
+            #directionPanel {
+                max-height: 70vh;
+                border-radius: 0; /* Hilangkan lengkungan */
+            }
+            .alert-box { top: 4rem; } /* Sesuaikan posisi alert */
+            .tab-button { padding: 0.6rem 0.2rem; font-size: 0.8rem;}
+
+            #maximizeDirectionBtn {
+                left: 50%;
+                transform: translateX(-50%);
+                width: auto;
+                bottom: 0.8rem; /* Sesuaikan posisi di mobile */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <span class="ml-2">Jelajah Kuliner Ponorogo</span>
+        <button onclick="toggleSidebar()" class="bg-white text-gray-800 px-4 py-2 rounded-full text-xl leading-none shadow-md hover:bg-gray-100 transition-all duration-200">
+            &#9776;
+        </button>
+    </div>
+    <div id="map"></div>
+    <div id="sidebar" class="sidebar text-sm">
+        <div class="font-bold text-xl mb-4 text-gray-800 dark:text-gray-200 flex-shrink-0">Hi, Selamat Datang!</div>
+
+        <div class="tab-buttons">
+            <div class="tab-button active" data-tab="kuliner" onclick="showTab('kuliner')">
+                <span class="material-icons text-base align-middle mr-1">restaurant</span> Kuliner
+            </div>
+            <div class="tab-button" data-tab="fitur" onclick="showTab('fitur')">
+                <span class="material-icons text-base align-middle mr-1">settings</span> Fitur & Pengaturan
+            </div>
+        </div>
+
+        <div id="tab-kuliner" class="tab-content active">
+            <div class="mb-4 p-4 bg-gray-50 dark:bg-gray-700 flex-shrink-0">
+                <h3 class="font-bold text-lg mb-2 section-title">Temukan Kuliner Favoritmu!</h3>
+                <input type="text" id="searchInput" class="w-full p-3 mb-3 focus:ring-2 focus:ring-purple-300" placeholder="Cari nama kuliner...">
+                <button onclick="applyFilters()" class="btn-primary w-full flex items-center justify-center gap-2">
+                    <span class="material-icons">search</span> Cari Kuliner
+                </button>
+            </div>
+            
+            <div class="font-bold text-lg mb-3 section-title flex-shrink-0">
+                <span class="material-icons text-xl">place</span> Rekomendasi Kuliner Terdekat
+            </div>
+            <div id="sidebarList" class="space-y-3 mt-2 flex-grow pr-1"></div>
+        </div>
+
+        <div id="tab-fitur" class="tab-content">
+            <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 flex-shrink-0">
+                <h3 class="font-bold text-lg mb-2 section-title">Atur Lokasi & Radius</h3>
+                <div class="mb-4">
+                    <label class="text-xs font-semibold text-gray-600 mb-1 block dark:text-gray-400">Radius Terdekat (meter):</label>
+                    <input type="range" id="bufferRadius" min="100" max="2000" step="100" value="500" class="w-full h-2 bg-gray-200 appearance-none cursor-pointer">
+                    <small class="text-xs text-gray-500 dark:text-gray-400">Radius: <span id="bufferVal" class="font-semibold">500</span> meter</small>
+                </div>
+                <button onclick="toggleRadiusFilter()" id="toggleRadiusFilterBtn" class="btn-secondary w-full flex items-center justify-center gap-2 text-sm mt-3">
+                    <span class="button-text">Filter Radius Aktif</span>
+                </button>
+                <button onclick="toggleManualLocationInput();" class="btn-info w-full flex items-center justify-center gap-2 text-sm mt-3">
+                    <span class="material-icons text-base">edit_location</span> Input Lokasi Manual
+                </button>
+            </div>
+
+            <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 flex-shrink-0">
+                <h3 class="font-bold text-lg mb-2 section-title">Opsi Tampilan Peta</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="toggleMapTheme();" id="toggleMapThemeBtn" class="btn-secondary flex items-center justify-center gap-2 text-sm">
+                        <span class="material-icons text-base">light_mode</span>
+                        <span class="button-text">Tema Terang</span>
+                    </button>
+                    <button onclick="toggleSatellite();" id="toggleSatelliteBtn" class="btn-secondary flex items-center justify-center gap-2 text-sm">
+                        <span class="material-icons text-base ">satellite_alt</span>
+                        <span class="button-text">Satelit Mati</span>
+                    </button>
+                    <button onclick="toggleHeatmap();" id="toggleHeatmapBtn" class="btn-secondary flex items-center justify-center gap-2 text-sm">
+                        <span class="material-icons text-base">whatshot</span>
+                        <span class="button-text">Heatmap Mati</span>
+                    </button>
+                    <button onclick="resetRoute();" id="resetRouteBtn" class="btn-danger flex items-center justify-center gap-2 text-sm">
+                        <span class="material-icons text-base">delete</span>
+                        <span class="button-text">Hapus Rute</span>
+                    </button>
+                    <button onclick="resetMapView();" id="resetMapViewBtn" class="btn-info flex items-center justify-center gap-2 text-sm">
+                        <span class="material-icons text-base">home</span>
+                        <span class="button-text">Atur Ulang Peta</span>
+                    </button>
+                    <button onclick="toggleMarkers();" id="toggleMarkersBtn" class="btn-secondary flex items-center justify-center gap-2 text-sm">
+                        <span class="material-icons text-base">visibility</span>
+                        <span class="button-text">Marker Aktif</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar-footer">
+            &copy; syafarahma 
+        </div>
+    </div>
+    <div id="alertBox" class="alert-box"></div>
+    <div id="directionPanel">
+        <div class="panel-header-controls flex justify-end items-center px-4 py-2">
+            <button class="minimize-explicit-btn customize-panel-btn" onclick="minimizeDirectionPanel()">
+                <span class="material-icons text-base">minimize</span>
+            </button>
+        </div>
+        <div class="minimize-handle" onclick="minimizeDirectionPanel()"></div>
+        
+        <div class="tab-buttons flex-shrink-0">
+            <button id="showDirectionsBtn" class="tab-button" onclick="showDirectionPanelContent('directions')">
+                <span class="material-icons text-base align-middle mr-1">alt_route</span> Petunjuk Arah
+            </button>
+            <button id="showManualInputBtn" class="tab-button" onclick="showDirectionPanelContent('manualInput')">
+                <span class="material-icons text-base align-middle mr-1">edit_location_alt</span> Input Lokasi Manual
+            </button>
+        </div>
+
+        <div id="directionContent" class="direction-sub-panel">
+            <div class="font-bold text-lg mb-3 text-gray-800 dark:text-gray-200"><span class="material-icons">directions</span> Petunjuk Arah</div>
+            <div id="distanceTimeInfo" class="text-sm mb-3 text-gray-700 dark:text-gray-400"></div>
+            <ul id="directionList" class="pl-4 text-left"></ul>
+        </div>
+
+        <div id="manualInputContent" class="direction-sub-panel">
+            <div class="font-bold text-lg mb-3 text-gray-800 dark:text-gray-200"><span class="material-icons">edit_location</span> Masukkan Lokasi Manual</div>
+            <input type="text" id="manualLat" class="w-full p-2 mb-3" placeholder="Latitude (contoh: -7.8718)">
+            <input type="text" id="manualLon" class="w-full p-2 mb-3" placeholder="Longitude (contoh: 111.4703)">
+            <button onclick="setManualLocation()" class="btn-primary w-full mt-2">Set Lokasi</button>
+        </div>
+
+        <button id="endRouteBtn" onclick="hideTurnByTurnInstructions()" class="btn-danger w-full mt-4 py-3">
+            <span class="material-icons mr-2">exit_to_app</span> Akhiri Rute
+        </button>
+    </div>
+
+    <button id="maximizeDirectionBtn" onclick="maximizeDirectionPanel()" style="display: none;">
+        <span class="material-icons">navigation</span> <span class="button-text">Buka Panel Arah</span>
+    </button>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+    <script>
+        // Variabel Global
+        let mapTheme = 'light'; // Default tema terang
+        let isSatellite = false; // Default satelit mati
+        let tileLayer, heatmapLayer;
+        let userMarker, bufferCircle, routingControl;
+        const kulinerMarkers = []; // Menyimpan semua data kuliner dengan objek L.marker-nya
+        let markerLayerGroup = L.layerGroup(); // Menggunakan L.layerGroup()
+        let isHeatmapActive = false; // Status global untuk heatmap
+        let areMarkersVisible = true; // Status global untuk visibilitas marker
+        let isRadiusFilterActive = true; // Status global untuk filter radius, default aktif
+
+        // Inisialisasi Peta
+        const initialLatLng = L.latLng(-7.8718, 111.4703); // Koordinat awal Ponorogo
+        const initialZoom = 16;
+        const map = L.map('map').setView(initialLatLng, initialZoom);
+
+        // Tambahkan markerLayerGroup ke peta secara default
+        map.addLayer(markerLayerGroup);
+
+        // Ambil elemen DOM
+        const directionPanel = document.getElementById('directionPanel');
+        const directionList = document.getElementById('directionList');
+        const distanceTimeInfo = document.getElementById('distanceTimeInfo');
+        const alertBox = document.getElementById('alertBox');
+        const maximizeDirectionBtn = document.getElementById('maximizeDirectionBtn');
+        const toggleRadiusFilterBtn = document.getElementById('toggleRadiusFilterBtn'); // Tombol filter radius
+        const toggleMapThemeBtn = document.getElementById('toggleMapThemeBtn'); // Tombol tema
+        const toggleSatelliteBtn = document.getElementById('toggleSatelliteBtn'); // Tombol satelit
+        const toggleHeatmapBtn = document.getElementById('toggleHeatmapBtn'); // Tombol heatmap
+        const resetRouteBtn = document.getElementById('resetRouteBtn'); // Tombol reset rute
+        const resetMapViewBtn = document.getElementById('resetMapViewBtn'); // Tombol reset peta
+        const toggleMarkersBtn = document.getElementById('toggleMarkersBtn'); // Tombol marker
+        const endRouteBtn = document.getElementById('endRouteBtn'); // Tombol Akhiri Rute baru
+        let isDirectionPanelMinimized = false; // Variabel status baru untuk melacak status minimisasi
+
+        // --- Fungsi Utilitas ---
+
+        /**
+         * Mengontrol visibilitas panel arah (directionPanel) dan tombol maximize di peta.
+         * @param {boolean} show - True untuk menampilkan, False untuk menyembunyikan.
+         * @param {boolean} [isMinimizeAction=false] - True jika aksi adalah minimize, bukan close penuh.
+         */
+        function toggleDirectionPanel(show, isMinimizeAction = false) {
+            if (show) { // Tampilkan panel
+                directionPanel.classList.add('show-directions');
+                maximizeDirectionBtn.style.display = 'none'; // Sembunyikan tombol maximize saat panel muncul
+                isDirectionPanelMinimized = false;
+                updateDirectionPanelPosition(); // Pastikan posisi panel benar
+            } else { // Sembunyikan panel
+                directionPanel.classList.remove('show-directions');
+                if (isMinimizeAction) { // Jika diminimalkan, tampilkan tombol maximize
+                    maximizeDirectionBtn.style.display = 'flex'; // Gunakan flex untuk ikon + teks
+                    isDirectionPanelMinimized = true;
+                } else { // Jika ditutup penuh (oleh 'X' atau reset rute), sembunyikan tombol maximize
+                    maximizeDirectionBtn.style.display = 'none';
+                    isDirectionPanelMinimized = false;
+                }
+            }
+        }
+
+        /**
+         * Menampilkan petunjuk arah dalam panel bottom sheet.
+         */
+        function showTurnByTurnInstructions(instructions, distance = '', duration = '') {
+            distanceTimeInfo.textContent = `${distance && duration ? `Jarak: ${distance} | Estimasi: ${duration}` : ''}`;
+            directionList.innerHTML = '';
+            instructions.forEach(i => {
+                const li = document.createElement('li');
+                li.innerHTML = `<strong>${i.text}</strong>`;
+                directionList.appendChild(li);
+            });
+            toggleDirectionPanel(true); // Tampilkan panel
+            showDirectionPanelContent('directions'); // Pastikan tab petunjuk arah aktif
+
+            // Perbaikan Mobile: Sembunyikan sidebar saat rute ditampilkan di mobile
+            if (window.innerWidth < 768) { // Hanya untuk mobile
+                const sidebar = document.getElementById('sidebar');
+                if (!sidebar.classList.contains('collapsed')) {
+                    sidebar.classList.add('collapsed'); // Sembunyikan sidebar
+                    // map.invalidateSize() akan dipanggil oleh toggleSidebar melalui setTimeout
+                }
+            }
+        }
+
+        /**
+         * Menyembunyikan panel petunjuk arah (bottom sheet) dan mereset rute jika dipanggil dari tombol 'Akhiri Rute'.
+         */
+        function hideTurnByTurnInstructions() {
+            toggleDirectionPanel(false, false); // Tutup penuh, bukan minimize
+            if (routingControl) map.removeControl(routingControl); // Hapus rute saat ditutup penuh
+            showAlert('Rute telah diakhiri.'); // Pesan disesuaikan
+            updateButtonAppearance(resetRouteBtn, false, 'delete', 'Hapus Rute', 'delete', 'Hapus Rute'); // Set ke state non-aktif visual
+        }
+
+        /**
+         * Meminimalkan panel arah, menyembunyikannya dari pandangan tetapi membuat tombol maximize muncul.
+         */
+        function minimizeDirectionPanel() {
+            toggleDirectionPanel(false, true); // Meminimalkan, tampilkan tombol maximize
+        }
+
+        /**
+         * Memunculkan kembali panel arah dari keadaan minimize.
+         */
+        function maximizeDirectionPanel() {
+            toggleDirectionPanel(true); // Tampilkan panel
+            // Konten tab yang terakhir aktif akan tetap terlihat
+        }
+
+        /**
+         * Menampilkan pesan alert sementara.
+         * @param {string} text - Teks pesan alert.
+         */
+        function showAlert(text) {
+            alertBox.textContent = text;
+            alertBox.classList.add('show');
+            setTimeout(() => alertBox.classList.remove('show'), 3000);
+        }
+
+        /**
+         * Mengatur tema peta (terang/gelap) atau mode satelit.
+         */
+        function setMapTheme(theme, satellite = false) {
+            if (tileLayer) map.removeLayer(tileLayer);
+            tileLayer = satellite
+                ? L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', { subdomains: ['mt0','mt1','mt2','mt3'] })
+                : L.tileLayer(theme === 'dark'
+                    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+                    : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' });
+            tileLayer.addTo(map);
+        }
+        setMapTheme(mapTheme); // Set tema awal saat load
+
+        /**
+         * Mengganti status sidebar dan menyesuaikan peta serta panel arah.
+         * Menggunakan requestAnimationFrame untuk performa animasi yang lebih baik.
+         */
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mapElement = document.getElementById('map');
+
+            // Mencegah spam klik dengan menonaktifkan tombol sementara
+            const sidebarToggleButton = document.querySelector('.topbar button');
+            if (sidebarToggleButton) {
+                sidebarToggleButton.disabled = true;
+                setTimeout(() => {
+                    sidebarToggleButton.disabled = false;
+                }, 400); // Sesuaikan dengan durasi transisi + sedikit buffer
+            }
+
+            // Toggle kelas 'collapsed' pada sidebar
+            sidebar.classList.toggle('collapsed');
+
+            // Mengatur posisi dan lebar peta menggunakan requestAnimationFrame
+            requestAnimationFrame(() => {
+                if (window.innerWidth >= 768) { // Desktop
+                    if (sidebar.classList.contains('collapsed')) {
+                        mapElement.style.left = '0';
+                        mapElement.style.width = '100%';
+                    } else {
+                        mapElement.style.left = '320px';
+                        mapElement.style.width = `calc(100% - 320px)`;
+                    }
+                } else { // Mobile
+                    mapElement.style.left = '0';
+                    mapElement.style.width = '100%'; // Peta selalu 100% di mobile, sidebar akan translate keluar sepenuhnya
+                }
+                
+                // Sesuaikan posisi panel arah dan invalidate map setelah transisi selesai
+                setTimeout(() => {
+                    updateDirectionPanelPosition();
+                    map.invalidateSize({debounceMoveend: true}); // debounceMoveend untuk performa lebih baik
+                }, 300); // Sesuaikan dengan durasi transisi CSS
+            });
+        }
+
+        /**
+         * Mengganti tema peta antara terang dan gelap.
+         */
+        function toggleMapTheme() {
+            isSatellite = false; // Reset satelit saat ganti tema
+            mapTheme = mapTheme === 'light' ? 'dark' : 'light';
+            setMapTheme(mapTheme);
+            document.body.classList.toggle('dark-mode');
+            showAlert(`Tema peta diubah menjadi ${mapTheme === 'dark' ? 'gelap' : 'terang'}!`);
+            updateButtonAppearance(toggleMapThemeBtn, mapTheme === 'dark', 'dark_mode', 'Tema Gelap', 'light_mode', 'Tema Terang');
+        }
+
+        /**
+         * Mengganti mode peta antara normal dan satelit.
+         */
+        function toggleSatellite() {
+            isSatellite = !isSatellite;
+            setMapTheme(mapTheme, isSatellite);
+            showAlert(`Peta satelit ${isSatellite ? 'aktif' : 'nonaktif'}.`);
+            updateButtonAppearance(toggleSatelliteBtn, isSatellite, 'satellite_alt', 'Satelit Aktif', 'map', 'Satelit Mati');
+        }
+
+        /**
+         * Mengganti visibilitas layer heatmap dan ukuran marker kuliner.
+         */
+        function toggleHeatmap() {
+            isHeatmapActive = !isHeatmapActive; // Toggle heatmap state
+            showAlert(`Tampilan heatmap ${isHeatmapActive ? 'aktif' : 'nonaktif'}.`);
+            updateButtonAppearance(toggleHeatmapBtn, isHeatmapActive, 'whatshot', 'Heatmap Aktif', 'whatshot', 'Heatmap Mati');
+            updateMapMarkersDisplay(); // Panggil fungsi render ulang marker
+        }
+
+        /**
+         * Mereset rute yang sedang aktif.
+         */
+        function resetRoute() {
+            if (routingControl) map.removeControl(routingControl);
+            toggleDirectionPanel(false, false); // Tutup penuh panel
+            showAlert('Rute telah dihapus.');
+            updateButtonAppearance(resetRouteBtn, false, 'delete', 'Hapus Rute', 'delete', 'Hapus Rute'); // Set ke state non-aktif secara visual jika ada
+        }
+
+        /**
+         * Mengatur ulang tampilan peta ke posisi dan zoom awal.
+         */
+        function resetMapView() {
+            map.setView(initialLatLng, initialZoom);
+            showAlert('Tampilan peta diatur ulang.');
+        }
+
+        /**
+         * Mengganti visibilitas semua marker kuliner.
+         */
+        function toggleMarkers() {
+            areMarkersVisible = !areMarkersVisible; // Toggle marker visibility state
+            showAlert(`Marker kuliner ${areMarkersVisible ? 'ditampilkan' : 'disembunyikan'}.`);
+            updateButtonAppearance(toggleMarkersBtn, areMarkersVisible, 'visibility', 'Marker Aktif', 'visibility_off', 'Marker Mati');
+            updateMapMarkersDisplay(); // Panggil fungsi render ulang marker
+        }
+
+        /**
+         * Menjalankan perhitungan rute dari lokasi pengguna ke tujuan.
+         */
+        function runRouting(lat, lon, travelMode = 'driving') {
+            if (!userMarker) {
+                showAlert("Lokasi Anda belum terdeteksi. Silakan aktifkan lokasi atau masukkan manual.");
+                return;
+            }
+            if (routingControl) map.removeControl(routingControl);
+            routingControl = L.Routing.control({
+                waypoints: [userMarker.getLatLng(), L.latLng(lat, lon)],
+                router: L.Routing.osrmv1({ profile: travelMode }),
+                routeWhileDragging: false,
+                show: false,
+                createMarker: () => null
+            })
+            .on('routesfound', function(e) {
+                const route = e.routes[0];
+                const d = route.summary.totalDistance;
+                const t = route.summary.totalTime;
+                const jarak = d > 1000 ? `${(d/1000).toFixed(2)} km` : `${Math.round(d)} m`;
+                const waktu = `${(t/60).toFixed(0)} menit`;
+                showAlert(`Jarak: ${jarak} | Estimasi Waktu: ${waktu}`);
+                showTurnByTurnInstructions(route.instructions, jarak, waktu); // Tampilkan panel arah
+                updateButtonAppearance(resetRouteBtn, true, 'delete', 'Hapus Rute', 'delete', 'Hapus Rute'); // Set tombol rute aktif
+            })
+            .on('routingerror', function(e) {
+                showAlert(`Gagal membuat rute: ${e.error.message}. Coba mode perjalanan lain.`);
+                console.error("Routing error:", e);
+            })
+            .addTo(map);
+        }
+
+        /**
+         * Memperbarui jarak tempat kuliner dari lokasi pengguna.
+         */
+        function updateNearestPlaces(userLatLng) {
+            if (!userLatLng) {
+                kulinerMarkers.forEach(k => k.distance = Infinity);
+            } else {
+                kulinerMarkers.forEach(k => k.distance = map.distance(userLatLng, L.latLng(k.lat, k.lon)));
+            }
+            applyFilters(); // Ini akan memicu applyFilters dan updateMapMarkersDisplay
+        }
+
+        // --- Definisi Ikon Marker ---
+        const userIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const kulinerIconNormal = L.icon({
+            iconUrl: 'aset/logo2.png',
+            // shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            iconSize: [25, 30],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const kulinerIconSmall = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            iconSize: [15, 25],
+            iconAnchor: [7, 25],
+            popupAnchor: [1, -15],
+            shadowSize: [25, 25]
+        });
+
+        /**
+         * Dipanggil ketika lokasi pengguna ditemukan.
+         */
+        function onLocationFound(e) {
+            const bufferVal = parseFloat(document.getElementById('bufferRadius').value) || 500;
+            document.getElementById('bufferVal').textContent = bufferVal;
+            if (userMarker) map.removeLayer(userMarker);
+            if (bufferCircle) map.removeLayer(bufferCircle);
+            
+            userMarker = L.marker(e.latlng, { icon: userIcon }).addTo(map).bindPopup("Lokasi Anda Saat Ini").openPopup();
+            
+            // Perbarui atau buat ulang bufferCircle agar mengikuti slider
+            bufferCircle = L.circle(e.latlng, {
+                radius: bufferVal,
+                color: varToString('--primary-color'),
+                fillColor: varToString('--primary-color'),
+                fillOpacity: 0.1
+            }).addTo(map);
+
+            map.setView(e.latlng, 17);
+            updateNearestPlaces(e.latlng); 
+            showAlert("Lokasi Anda ditemukan!");
+        }
+
+        /**
+         * Mengambil nilai variabel CSS.
+         */
+        function varToString(cssVar) {
+            return getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim();
+        }
+
+        document.getElementById('bufferRadius').addEventListener('input', function() {
+            const bufferVal = parseFloat(this.value);
+            document.getElementById('bufferVal').textContent = bufferVal;
+            
+            if (userMarker) {
+                // Hapus bufferCircle lama jika ada
+                if (bufferCircle) {
+                    map.removeLayer(bufferCircle);
+                }
+                // Buat bufferCircle baru dengan radius yang diperbarui
+                bufferCircle = L.circle(userMarker.getLatLng(), {
+                    radius: bufferVal,
+                    color: varToString('--primary-color'),
+                    fillColor: varToString('--primary-color'),
+                    fillOpacity: 0.1
+                }).addTo(map);
+
+                updateNearestPlaces(userMarker.getLatLng()); 
+            } else {
+                applyFilters(); 
+            }
+        });
+
+        // Kontrol Leaflet kustom untuk tombol "Lokasi Saya"
+        L.Control.MyLocate = L.Control.extend({
+            onAdd: function(map) {
+                var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-locate');
+                container.innerHTML = '<span class="material-icons">my_location</span>';
+                container.title = 'Lokasi Saya';
+
+                L.DomEvent.on(container, 'click', function() {
+                    map.locate({setView: true, maxZoom: 17, watch: false, enableHighAccuracy: true});
+                });
+                return container;
+            },
+            onRemove: function(map) {
+                // Nothing to do here
+            }
+        });
+        L.control.myLocate = function(opts) {
+            return new L.Control.MyLocate(opts);
+        }
+        L.control.myLocate({ position: 'topright' }).addTo(map);
+
+        /**
+         * Menampilkan konten tertentu di dalam panel arah (Petunjuk Arah atau Input Lokasi Manual).
+         */
+        function showDirectionPanelContent(contentType) {
+            document.querySelectorAll('.direction-sub-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            document.querySelectorAll('#directionPanel .tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            // Sembunyikan/tampilkan tombol "Akhiri Rute" berdasarkan tab
+            if (contentType === 'directions') {
+                document.getElementById('directionContent').classList.add('active');
+                document.getElementById('showDirectionsBtn').classList.add('active');
+                endRouteBtn.style.display = 'flex'; // Tampilkan tombol "Akhiri Rute"
+            } else if (contentType === 'manualInput') {
+                document.getElementById('manualInputContent').classList.add('active');
+                document.getElementById('showManualInputBtn').classList.add('active');
+                endRouteBtn.style.display = 'none'; // Sembunyikan tombol "Akhiri Rute"
+            }
+            toggleDirectionPanel(true);
+        }
+
+        /**
+         * Fungsi untuk membuka panel input lokasi manual.
+         */
+        function toggleManualLocationInput() {
+            showTab('fitur');
+            showDirectionPanelContent('manualInput');
+        }
+
+        /**
+         * Mengatur lokasi pengguna secara manual berdasarkan input Latitude dan Longitude.
+         */
+        function setManualLocation() {
+            const latInput = document.getElementById('manualLat').value;
+            const lonInput = document.getElementById('manualLon').value;
+
+            if (latInput === '' || lonInput === '') {
+                showAlert('Latitude dan Longitude tidak boleh kosong!');
+                return;
+            }
+
+            const lat = parseFloat(latInput);
+            const lon = parseFloat(lonInput);
+
+            if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+                showAlert('Format Latitude atau Longitude tidak valid!');
+                return;
+            }
+
+            const manualLatLng = L.latLng(lat, lon);
+            onLocationFound({ latlng: manualLatLng });
+            showAlert(`Lokasi diatur secara manual: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+            toggleDirectionPanel(false, false); // Tutup penuh panel setelah lokasi diatur
+        }
+
+        /**
+         * Fungsi utama untuk memperbarui tampilan marker di peta berdasarkan filter, heatmap, dan visibilitas.
+         */
+        function updateMapMarkersDisplay() {
+            // 1. Bersihkan semua layer yang terkait dengan marker dari peta
+            markerLayerGroup.clearLayers(); 
+            kulinerMarkers.forEach(k => {
+                if (map.hasLayer(k.marker)) {
+                    map.removeLayer(k.marker);
+                }
+            });
+            if (map.hasLayer(heatmapLayer)) {
+                map.removeLayer(heatmapLayer);
+            }
+
+            // 2. Filter data kuliner berdasarkan pencarian dan radius (jika aktif)
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+            const bufferVal = parseFloat(document.getElementById('bufferRadius').value) || 0;
+
+            const currentlyFilteredMarkers = kulinerMarkers.filter(k => {
+                const nameMatch = k.name.toLowerCase().includes(keyword);
+                const distanceMatch = isRadiusFilterActive && userMarker ? k.distance <= bufferVal : true;
+                return nameMatch && distanceMatch;
+            });
+
+            // 3. Tampilkan marker atau heatmap sesuai status global
+            if (isHeatmapActive) {
+                // Jika heatmap aktif, tambahkan layer heatmap
+                if (heatmapLayer) map.addLayer(heatmapLayer);
+                // Jika marker juga ingin ditampilkan bersama heatmap
+                if (areMarkersVisible) {
+                    currentlyFilteredMarkers.forEach(k => {
+                        k.marker.setIcon(kulinerIconSmall); 
+                        k.marker.setOpacity(0.6); 
+                        map.addLayer(k.marker); 
+                    });
+                }
+            } else { // Jika heatmap tidak aktif
+                if (areMarkersVisible) { // Jika marker ingin ditampilkan (normal)
+                    currentlyFilteredMarkers.forEach(k => {
+                        k.marker.setIcon(kulinerIconNormal); 
+                        k.marker.setOpacity(1); 
+                        markerLayerGroup.addLayer(k.marker); 
+                    });
+                    if (!map.hasLayer(markerLayerGroup)) {
+                        map.addLayer(markerLayerGroup); // Tambahkan layerGroup ke peta
+                    }
+                }
+            }
+        }
+
+        /**
+         * Memuat data kuliner dari JSON.
+         */
+        fetch('https://raw.githubusercontent.com/Syafarahma/Final_Project/refs/heads/main/json.json')
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                const heatData = [];
+                data.features.forEach((d) => {
+                    const lat = d.geometry.coordinates[1];
+                    const lon = d.geometry.coordinates[0];
+                    const props = d.properties;
+
+                    const popupContent = document.createElement('div');
+                    popupContent.className = 'kuliner-popup-content';
+                    popupContent.innerHTML = `
+                        <div class="popup-header">
+                            <span class="material-icons text-xl text-purple-600 mr-2">restaurant_menu</span>
+                            <div class="popup-title">${props.Name}</div>
+                        </div>
+                        <div class="popup-address">
+                            <span class="material-icons text-sm align-middle mr-1">location_on</span> ${props.Alamat_Len || 'Alamat tidak tersedia'}
+                        </div>
+                        <div class="popup-rating">
+                            <span class="material-icons text-sm align-middle mr-1">star</span> ${props.Rating || 'N/A'}
+                        </div>
+                        <div class="popup-actions">
+                            <select class="popup-select-mode">
+                                <option value="driving">🚗 Mobil</option>
+                                <option value="foot">🚶 Jalan Kaki</option>
+                                <option value="bike">🚴 Sepeda</option>
+                            </select>
+                            <button class="popup-btn">Tunjukkan Rute</button>
+                            <button class="popup-share-btn" data-name="${props.Name}" data-address="${props.Alamat_Len || 'Alamat tidak tersedia'}" data-lat="${lat}" data-lon="${lon}">
+                                <span class="material-icons text-base">share</span> Bagikan Lokasi
+                            </button>
+                        </div>
+                    `;
+
+                    const selectElement = popupContent.querySelector('.popup-select-mode');
+                    const routeButton = popupContent.querySelector('.popup-btn');
+                    const shareButton = popupContent.querySelector('.popup-share-btn');
+
+                    routeButton.onclick = () => runRouting(lat, lon, selectElement.value);
+                    shareButton.onclick = (e) => {
+                        const name = e.currentTarget.dataset.name;
+                        const address = e.currentTarget.dataset.address;
+                        const lat = e.currentTarget.dataset.lat;
+                        const lon = e.currentTarget.dataset.lon;
+                        
+                        const googleMapsLink = `https://www.google.com/maps?q=${lat},${lon}`;
+                        const shareText = `Yuk, cobain *${name}* di ${address}! 📍 Link: ${googleMapsLink} #KulinerPonorogo`;
+
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(shareText)
+                                .then(() => showAlert('Link lokasi berhasil disalin!'))
+                                .catch(err => {
+                                    console.error('Gagal menyalin text: ', err);
+                                    showAlert('Gagal menyalin link. Silakan salin manual.');
+                                });
+                        } else {
+                            const textArea = document.createElement("textarea");
+                            textArea.value = shareText;
+                            document.body.appendChild(textArea);
+                            textArea.focus();
+                            textArea.select();
+                            try {
+                                document.execCommand('copy');
+                                showAlert('Link lokasi berhasil disalin!');
+                            } catch (err) {
+                                console.error('Gagal menyalin text: ', err);
+                                showAlert('Gagal menyalin link. Browser Anda tidak mendukung copy otomatis.');
+                            }
+                            document.body.removeChild(textArea);
+                        }
+                    };
+
+                    const marker = L.marker([lat, lon], {
+                        icon: kulinerIconNormal
+                    });
+                    marker.bindPopup(popupContent).bindTooltip(props.Name, { direction: 'top', offset: [0, -30], permanent: false, className: 'poppins-tooltip' });
+                    kulinerMarkers.push({ marker, name: props.Name, rating: parseFloat(props.Rating), lat, lon, distance: Infinity });
+                    heatData.push([lat, lon, 0.6]);
+                });
+                heatmapLayer = L.heatLayer(heatData, {radius: 25, blur: 15});
+
+                updateMapMarkersDisplay(); 
+
+                map.locate({setView: true, maxZoom: 17, watch: false, enableHighAccuracy: true});
+                applyFilters(); 
+            })
+            .catch(error => {
+                console.error("Error fetching data:", error);
+                showAlert("Gagal memuat data kuliner. Coba refresh halaman!");
+                updateNearestPlaces(null);
+            });
+
+        map.on('locationfound', onLocationFound);
+        map.on('locationerror', function(e) {
+            showAlert(`Akses lokasi otomatis ditolak. Gunakan 'Input Lokasi Manual' di tab 'Fitur & Pengaturan' untuk menentukan lokasi.`);
+            console.error("Geolocation error:", e.message);
+            map.setView([-7.8718, 111.4703], 13);
+            updateNearestPlaces(null);
+        });
+
+        /**
+         * Menerapkan filter pencarian dan radius pada daftar kuliner DAN memperbarui tampilan marker di peta.
+         */
+        function applyFilters() {
+            const keyword = document.getElementById('searchInput').value.toLowerCase();
+            const bufferVal = parseFloat(document.getElementById('bufferRadius').value) || 0;
+
+            const filtered = kulinerMarkers.filter(k => {
+                const nameMatch = k.name.toLowerCase().includes(keyword);
+                const distanceMatch = isRadiusFilterActive && userMarker ? k.distance <= bufferVal : true;
+                return nameMatch && distanceMatch;
+            });
+
+            const container = document.getElementById('sidebarList');
+            container.innerHTML = '';
+            if (filtered.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-4 dark:text-gray-400">Tidak ada kuliner ditemukan. Coba ubah kata kunci atau perlebar radius pencarian.</p>';
+            }
+            const sortedForSidebar = userMarker 
+                ? filtered.sort((a, b) => a.distance - b.distance)
+                : filtered; 
+
+            sortedForSidebar.forEach((k) => {
+                const jarak = k.distance !== Infinity && k.distance !== undefined
+                    ? (k.distance >= 1000 ? `${(k.distance / 1000).toFixed(2)} km` : `${Math.round(k.distance)} m`)
+                    : 'Jarak: N/A';
+                const div = document.createElement('div');
+                div.className = "p-3 bg-white flex flex-col gap-2 transition-all duration-200 dark:bg-gray-700";
+                
+                div.innerHTML = `
+                    <div class="font-medium text-base text-gray-800 dark:text-gray-200">🍽️ ${k.name}</div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400">⭐ ${k.rating || 'N/A'} | 📏 ${jarak}</div>
+                    <button class="text-gray-800 font-semibold text-sm hover:underline self-start dark:text-yellow-400" onclick="runRouting(${k.lat}, ${k.lon})">Arahkan ke sini</button>
+                `;
+                container.appendChild(div);
+            });
+
+            updateMapMarkersDisplay(); 
+        }
+
+        /**
+         * Mengganti status filter radius dan memperbarui tampilan.
+         */
+        function toggleRadiusFilter() {
+            isRadiusFilterActive = !isRadiusFilterActive; 
+            updateButtonAppearance(toggleRadiusFilterBtn, isRadiusFilterActive, 'radio_button_checked', 'Filter Radius Aktif', 'radio_button_unchecked', 'Filter Radius Nonaktif');
+            showAlert(`Filter radius ${isRadiusFilterActive ? 'diaktifkan' : 'dinonaktifkan'}.`);
+            applyFilters(); 
+        }
+
+        /**
+         * Fungsi helper untuk memperbarui tampilan tombol (teks, ikon, kelas CSS).
+         */
+        function updateButtonAppearance(buttonElement, isActive, activeIconName, activeText, inactiveIconName, inactiveText) {
+            const textSpan = buttonElement.querySelector('.button-text');
+
+            if (isActive) {
+                buttonElement.classList.remove('btn-secondary');
+                buttonElement.classList.add('btn-primary');
+            } else {
+                buttonElement.classList.remove('btn-primary');
+                buttonElement.classList.add('btn-secondary');
+            }
+
+            if (textSpan) {
+                textSpan.textContent = isActive ? activeText : inactiveText;
+            }
+        }
+
+        /**
+         * Mengatur posisi panel arah (directionPanel) agar responsif.
+         */
+        function updateDirectionPanelPosition() {
+            const sidebar = document.getElementById('sidebar');
+            const directionPanel = document.getElementById('directionPanel');
+            const maximizeButton = document.getElementById('maximizeDirectionBtn');
+
+            if (window.innerWidth >= 768) { // Desktop
+                if (sidebar.classList.contains('collapsed')) {
+                    directionPanel.classList.remove('sidebar-open');
+                    maximizeButton.style.left = '1.5rem';
+                    maximizeButton.style.transform = 'translateX(0)';
+                } else {
+                    directionPanel.classList.add('sidebar-open');
+                    maximizeButton.style.left = '335px'; // 320px (sidebar) + 15px (margin)
+                    maximizeButton.style.transform = 'translateX(0)';
+                }
+            } else { // Mobile
+                directionPanel.classList.remove('sidebar-open');
+                maximizeButton.style.left = '50%';
+                maximizeButton.style.transform = 'translateX(-50%)';
+            }
+        }
+
+        // Event listener untuk perubahan ukuran jendela
+        window.addEventListener('resize', updateDirectionPanelPosition);
+
+        // Inisialisasi posisi panel arah saat halaman dimuat
+        window.onload = function() {
+            updateDirectionPanelPosition();
+            // Inisialisasi tampilan tombol saat pertama kali dimuat
+            updateButtonAppearance(toggleRadiusFilterBtn, isRadiusFilterActive, 'radio_button_checked', 'Filter Radius Aktif', 'radio_button_unchecked', 'Filter Radius Nonaktif');
+            updateButtonAppearance(toggleMapThemeBtn, mapTheme === 'dark', 'dark_mode', 'Tema Gelap', 'light_mode', 'Tema Terang');
+            updateButtonAppearance(toggleSatelliteBtn, isSatellite, 'satellite_alt', 'Satelit Aktif', 'map', 'Satelit Mati');
+            updateButtonAppearance(toggleHeatmapBtn, isHeatmapActive, 'whatshot', 'Heatmap Aktif', 'whatshot', 'Heatmap Mati');
+            updateButtonAppearance(resetRouteBtn, false, 'delete', 'Hapus Rute', 'delete', 'Hapus Rute'); 
+            updateButtonAppearance(resetMapViewBtn, false, 'home', 'Atur Ulang Peta', 'home', 'Atur Ulang Peta'); 
+            updateButtonAppearance(toggleMarkersBtn, areMarkersVisible, 'visibility', 'Marker Aktif', 'visibility_off', 'Marker Mati');
+            
+            // Tambahkan event listener untuk input pencarian
+            document.getElementById('searchInput').addEventListener('keyup', applyFilters);
+        };
+
+        /**
+         * Mengatur tampilan tab di sidebar.
+         */
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.querySelector(`.tab-button[data-tab="${tabId}"]`).classList.add('active');
+
+            // Sembunyikan panel arah saat berganti tab di sidebar
+            toggleDirectionPanel(false, false);
+        }
+    </script>
+</body>
+</html>
